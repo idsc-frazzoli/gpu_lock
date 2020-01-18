@@ -1,5 +1,6 @@
 # GPU Lock
-This python package manages GPU access by placing files in /var/tmp/gpu_locks. A lock is aquired if for a given GPU no lock file exists. GPUs are selected by their ID.
+This package manages "currently used" information for our GPUs, to stop us from accidentaly starting a process on a GPU that another user is currently using for their research. This approach is superior to using nvidia-smi as a GPU will remain locked even if we are not using the GPU during brief interruptions in our scripts (for example finding a new set of hyperparameters when running hyperparameter optimization). This package manages GPU access by placing files in /var/tmp/gpu_locks.
+
 ## Usage:
 GPU locks use the python "with" sytax. This will automatically create a lock and close it after your script ends, even if errors occurr. For example, if you want to aquire a lock on the GPU with ID 0:
 ```python
@@ -19,7 +20,14 @@ if __name__=="__main__":
 ```
 
 ## How does this work?
-The basic system behind this is very simple: If you acquire a GPULock it checks if there is a file containing the GPU uid you are requesting in the /var/tmp/gpu_locks directory. If the file does not exist or the owner process is no longer alive or the lock was created by you the old lockfile will be overwritten. Lockfiles are just json file that contain information such as your username and the time you created the lock. For example:
+The basic system behind is very simple: If you want to acquire a lock on a GPU with uid {i} the library checks if the file /var/tmp/gpu_locks/gpu_{i}.json exists. If it does not exist the lock will be aquired by creating a new lockfile. If the file exists the library will parse it and check for the following conditions:
+- If your username created the lock, the old lock will be removed and you will be allowed to create a new lockfile.
+- If another user created the lock and the "owner" process PID is dead, the old lockfile will be removed and you will create a new lockfile.
+- In all other cases you will not be allowed to create a lockfile and a RumtimeError will be raised.
+
+**All of the locking is consensus based - it only works if everyone is using this library. Having a lock does not systematically stop another user from using the GPU you "locked".** Therefore, please be careful to use a mechanism like CUDA_VISIBLE_DEVICES to make sure you only use the GPUs you acquired a lock for.
+## Lockfiles
+Lockfiles are just JSON files that contain information such as your username and the time you created the lock. For example:
 ``` json
 {
     "user": "hetzell", 
@@ -28,3 +36,4 @@ The basic system behind this is very simple: If you acquire a GPULock it checks 
     "owner": 22982
 }
 ```
+Importantly the lockfile also contains the PID of the process that created the lock. The lockfile will be treated as stale if the owner process is no longer alive. Stale lockfiles will be ignored and overwritten by other users requesting the resource subsequently.
