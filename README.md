@@ -10,7 +10,7 @@ pip install git+https://github.com/idsc-frazzoli/gpu_lock.git
 ```
 
 ## Usage:
-GPU locks use the python "with" sytax. This will automatically create a lock and close it after your script ends, even if errors occurr. For example, if you want to aquire a lock on the GPU with ID 0:
+GPU locks use the python "with" sytax. This will automatically create a lock and close it after your script ends, even if errors occurr. For example, if you want to aquire a lock on a single GPU:
 ```python
 from gpu_lock import lock_gpu
 
@@ -19,6 +19,7 @@ if __name__=="__main__":
         print(f"Locked GPUS {lock.uid}")
         # your existing code goes here, do stuff with the GPU.
 ```
+Behind the scenes this attempts to create locks on all GPUs and returns the first lock that can be aquired.
 If you want to attempt to aquire a lock on multiple (i.e. 3) GPUs:
 ```python
 from gpu_lock import lock_gpu
