@@ -199,7 +199,8 @@ def lock_gpu(n: int = 1, n_system_gpus: int= 8) -> Union[_MultiGPULock, _GPULock
                 return new_lock
             except RuntimeError:
                 logging.info(f"Could not aquire lock on GPU {uid}")
-                raise
+        
+        raise RuntimeError("Could not aquire lock. All GPUs are busy.")
 
     else:
         return _MultiGPULock(n, n_system_gpus)
