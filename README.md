@@ -1,7 +1,7 @@
 # GPU Lock
 This package manages GPU access between users, to stop us from accidentaly starting a process on a GPU that another user is currently using for their research. This approach is superior to using nvidia-smi as a GPU will remain locked even if we are not using the GPU during brief interruptions in our scripts (for example finding a new set of hyperparameters when running hyperparameter optimization). 
 
-This package manages GPU access between users by placing files in /var/tmp/gpu_locks. **It DOES NOT restrict your program to only run on the GPU you aquired a lock for. You MUST use a mechanism such as CUDA_VISIBLE_DEVICES in tensorflow or manual device placement in pytorch using .to(device) to ensure that you only use the GPU you aquired a lock for.** All of the locking is consensus based - it only works if everyone is using this library. Having a lock does not systematically stop another user from using the GPU you "locked".
+This package manages GPU access between users by placing files in /var/tmp/gpu_locks. It automatically sets CUDA_VISIBLE_DEVICES to the uids of the GPUs you hold locks for. All of the locking is consensus based - it only works if everyone is using this library. Having a lock does not systematically stop another user from using the GPU you "locked".
 
 ## Installation:
 You can install this package using pip:
@@ -15,15 +15,17 @@ GPU locks use the python "with" sytax. This will automatically create a lock and
 from gpu_lock import lock_gpu
 
 if __name__=="__main__":
-    with lock_gpu(uid=0):
+    with lock_gpu() as lock:
+        print(f"Locked GPUS {lock.uid}")
         # your existing code goes here, do stuff with the GPU.
 ```
-If you want to attempt to aquire a lock on any GPU (This will fail if all GPUs are busy).
+If you want to attempt to aquire a lock on multiple (i.e. 3) GPUs:
 ```python
 from gpu_lock import lock_gpu
 
 if __name__=="__main__":
-    with lock_gpu():
+    with lock_gpu(n=3) as lock:
+        print(f"Locked GPUS {lock.uid}")
         # your existing code goes here, do stuff with the GPU.
 ```
 
