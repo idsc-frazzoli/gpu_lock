@@ -20,13 +20,14 @@ class _GPULock:
         self.pid: int = os.getpid()
             
         self.lock_dir: Path = Path(LOCKDIR)
-        self.lock_dir.mkdir(mode=666, exist_ok=True, parents=False)
+        self.lock_dir.mkdir(mode=0o777, exist_ok=True, parents=False)
 
         self.lock: Path = self.lock_dir / f"gpu_{self.uid}.json"
 
     def __enter__(self):
         self._aquire_lock()
         self._add_uid_visible_devices()
+        return self
 
     def __exit__(self, exit_type, value, traceback):
         self._remove_uid_visible_devices()
@@ -63,7 +64,7 @@ class _GPULock:
     def _create_lock(self) -> None:
         with open(self.lock, mode="w", newline="") as lockfp:
             json.dump({"user": self.user, "time": int(time.time()), "uid": self.uid, "owner": self.pid}, fp=lockfp, indent=4)
-        os.chmod(self.lock, 666)
+        os.chmod(self.lock, 0o777)
         logging.debug(f"Aquired lock on GPU {self.uid}")
 
     def check_lock_availability(self) -> None:
@@ -148,6 +149,8 @@ class _MultiGPULock:
     def __enter__(self):
         for lock in self.locks:
             lock.__enter__()
+        
+        return self
     
     def __exit__(self, exit_type, value, traceback):
         for lock in self.locks:
@@ -178,6 +181,7 @@ def lock_gpu(n: int = 1, n_system_gpus: int= 8) -> Union[_MultiGPULock, _GPULock
                 return new_lock
             except RuntimeError:
                 logging.info(f"Could not aquire lock on GPU {uid}")
+                raise
 
     else:
         return _MultiGPULock(n, n_system_gpus)
