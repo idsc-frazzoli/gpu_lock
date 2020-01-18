@@ -3,6 +3,7 @@ import logging
 import os
 import json
 import time
+import GPUtil
 
 import time
 from pathlib import Path
@@ -61,6 +62,20 @@ class _GPULock:
             os.remove(self.lock)
         self._create_lock()
 
+    def _verify_gpu_not_busy(self):
+        """
+        This verification step is added to prevent locking of GPUs that are being used by users not using this package. 
+        It gets a list of available GPUs from nvidia-smi and checks that self.uid is not occupied.
+        
+        Raises
+        ------
+        RuntimeError
+            If the GPU with uid self.uid is being used by a rogue user.
+        """
+        available_ids = GPUtil.getAvailable(order = 'first', limit = 1, maxLoad = 0.1, maxMemory = 0.1)
+        if self.uid not in available_ids:
+            raise RuntimeError("Lock could have been aquired but the GPU is being used by a rogue user.")
+
     def _create_lock(self) -> None:
         with open(self.lock, mode="w", newline="") as lockfp:
             json.dump({"user": self.user, "time": int(time.time()), "uid": self.uid, "owner": self.pid}, fp=lockfp, indent=4)
@@ -75,6 +90,7 @@ class _GPULock:
         ------
         RuntimeError
             If a valid and current lock exists for the GPU with uid self.uid.
+        
         """
         if self.lock.exists():
             with open(self.lock, mode="r") as lockfp:
@@ -86,6 +102,8 @@ class _GPULock:
                 logging.debug(f"Found stale GPU lock with dead owner.")
             else:
                 raise RuntimeError(f"Could not aquire lock. The resource is locked by {lock['user']}")
+        
+        self._verify_gpu_not_busy()
     
     @staticmethod
     def check_pid_alive(pid: int) -> bool:        
