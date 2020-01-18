@@ -20,7 +20,7 @@ class _GPULock:
         self.pid: int = os.getpid()
             
         self.lock_dir: Path = Path(LOCKDIR)
-        self.lock_dir.mkdir(exist_ok=True, parents=False)
+        self.lock_dir.mkdir(mode=666, exist_ok=True, parents=False)
 
         self.lock: Path = self.lock_dir / f"gpu_{self.uid}.json"
 
@@ -63,7 +63,7 @@ class _GPULock:
     def _create_lock(self) -> None:
         with open(self.lock, mode="w", newline="") as lockfp:
             json.dump({"user": self.user, "time": int(time.time()), "uid": self.uid, "owner": self.pid}, fp=lockfp, indent=4)
-        os.chmod(self.lock, 777)
+        os.chmod(self.lock, 666)
         logging.debug(f"Aquired lock on GPU {self.uid}")
 
     def check_lock_availability(self) -> None:
