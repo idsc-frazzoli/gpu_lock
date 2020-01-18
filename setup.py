@@ -20,6 +20,6 @@ setuptools.setup(
     ],
     install_requires=[
         "gputil"
-    ]
+    ],
     python_requires='>=3.2',
 )

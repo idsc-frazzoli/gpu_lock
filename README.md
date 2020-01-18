@@ -36,6 +36,8 @@ The basic system behind is very simple: If you want to acquire a lock on a GPU w
 - If another user created the lock and the "owner" process PID is dead, the old lockfile will be removed and you will create a new lockfile.
 - In all other cases you will not be allowed to create a lockfile and a RumtimeError will be raised.
 
+Since we cannot be sure that all users will immidately be using this library we use a python wrapper to parse GPU utilization from nvidia-smi and only acquire a lock on GPUs which are not busy.
+
 ## Lockfiles
 Lockfiles are just JSON files that contain information such as your username and the time you created the lock. For example:
 ``` json
