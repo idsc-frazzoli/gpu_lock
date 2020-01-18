@@ -3,6 +3,12 @@ This package manages "currently used" information for our GPUs, to stop us from 
 
 This package manages GPU access between users by placing files in /var/tmp/gpu_locks. **It DOES NOT restrict your program to only run on the GPU you aquired a lock for. You MUST use a mechanism such as CUDA_VISIBLE_DEVICES in tensorflow or manual device placement in pytorch using .to(device) to ensure that you only use the GPU you aquired a lock for.** All of the locking is consensus based - it only works if everyone is using this library. Having a lock does not systematically stop another user from using the GPU you "locked".
 
+## Installation:
+You can install this package using pip:
+```shell
+pip install git+https://github.com/idsc-frazzoli/gpu_lock.git
+```
+
 ## Usage:
 GPU locks use the python "with" sytax. This will automatically create a lock and close it after your script ends, even if errors occurr. For example, if you want to aquire a lock on the GPU with ID 0:
 ```python
