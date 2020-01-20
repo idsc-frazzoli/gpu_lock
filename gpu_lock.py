@@ -72,8 +72,11 @@ class _GPULock:
         RuntimeError
             If the GPU with uid self.uid is being used by a rogue user.
         """
-        available_ids = GPUtil.getAvailable(order = 'first', limit = 1, maxLoad = 0.1, maxMemory = 0.1)
-        if self.uid not in available_ids:
+        gpus: GPUtil.GPU = {gpu.id: gpu for gpu in GPUtil.getGPUs()}
+        load: float  = gpus[self.uid].load
+        memutil: float = gpus[self.uid].memoryUtil
+        logging.debug(f"GPU {self.uid} has load {load} and memutil {memutil}.")
+        if load > 0.1 and memutil > 0.1:
             raise RuntimeError("Lock could have been aquired but the GPU is being used by a rogue user.")
 
     def _create_lock(self) -> None:
