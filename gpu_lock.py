@@ -99,7 +99,7 @@ class _GPULock:
             with open(self.lock, mode="r") as lockfp:
                 lock = json.load(lockfp)
             
-            if lock["user"] == self.user or lock["owner"] == self.pid:
+            if lock["owner"] == self.pid:
                 logging.warning(f"Found existing GPU lock for user {self.user}. Please make sure to release resources after finishing your scripts. Old lock will be renewed.")
             elif not self.check_pid_alive(pid=lock["owner"]):
                 logging.debug(f"Found stale GPU lock with dead owner.")
