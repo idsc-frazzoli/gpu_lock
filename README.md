@@ -9,6 +9,12 @@ You can install this package using pip:
 pip install git+https://github.com/idsc-frazzoli/gpu_lock.git
 ```
 
+## Updating
+As this package is still under development we may sometimes push changes to this repo. You can install these updates using:
+```shell
+pip install --upgrade git+https://github.com/idsc-frazzoli/gpu_lock.git
+```
+
 ## Usage:
 GPU locks use the python "with" sytax. This will automatically create a lock and close it after your script ends, even if errors occurr. For example, if you want to aquire a lock on a single GPU:
 ```python
