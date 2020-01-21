@@ -38,8 +38,8 @@ if __name__=="__main__":
 
 ## How does this work?
 The basic system behind is very simple: If you want to acquire a lock on a GPU with uid {i} the library checks if the file /var/tmp/gpu_locks/gpu_{i}.json exists. If it does not exist the lock will be aquired by creating a new lockfile. If the file exists the library will parse it and check for the following conditions:
-- If your username created the lock, the old lock will be removed and you will be allowed to create a new lockfile.
-- If another user created the lock and the "owner" process PID is dead, the old lockfile will be removed and you will create a new lockfile.
+- If your current pid created the lock, the old lock will be removed and you will be allowed to create a new lockfile.
+- If the "owner" process PID is dead, the old lockfile will be removed and you will create a new lockfile.
 - In all other cases you will not be allowed to create a lockfile and a RumtimeError will be raised.
 
 Since we cannot be sure that all users will immidately be using this library we use a python wrapper to parse GPU utilization from nvidia-smi and only acquire a lock on GPUs which are not busy.
