@@ -1,18 +1,18 @@
-import setuptools
+from setuptools import setup, find_packages
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-setuptools.setup(
-    name="gpu_lock", # Replace with your own username
-    version="0.0.1",
+setup(
+    name="gpu_lock",
+    version="0.1",
     author="Lorenz Hetzel",
     author_email="hetzell@student.ethz.ch",
     description="File based locking of GPU resources.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/idsc-frazzoli/gpu_lock",
-    packages=setuptools.find_packages(),
+    packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
@@ -21,5 +21,5 @@ setuptools.setup(
     install_requires=[
         "gputil"
     ],
-    python_requires='>=3.2',
+    python_requires='>=3.5',
 )
