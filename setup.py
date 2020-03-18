@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 from gpu_lock.version import version
 
 with open("README.md", "r") as fh:
-    long_description: fh.read()
+    long_description = fh.read()
 
 setup_kwargs = {
     "name": "gpu_lock",
