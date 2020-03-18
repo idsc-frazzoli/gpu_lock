@@ -20,7 +20,6 @@ class _GPULock:
     """
     def __init__(self, uid: int = None):
         self.user: str = getpass.getuser()
-        self.git_version = self.get_git_version()
         self.uid: int = uid
         self.pid: int = os.getpid()
             
@@ -94,7 +93,7 @@ class _GPULock:
     def _create_lock(self) -> None:
         with open(str(self.lock), mode="w", newline="") as lockfp:
             json.dump({"user": self.user, "time": int(time.time()), "uid": self.uid, "owner": self.pid,
-                       "git_version": self.git_version}, fp=lockfp, indent=4)
+                       "git_version": self.get_git_version()}, fp=lockfp, indent=4)
         os.chmod(str(self.lock), 0o777)
         logger.debug(f"Aquired lock on GPU {self.uid}")
 
