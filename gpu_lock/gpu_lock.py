@@ -3,13 +3,16 @@ import logging
 import os
 import json
 import time
+import subprocess
+from pathlib import Path
+from typing import Dict, List, Set, Union, Any
+
 import GPUtil
 
-import time
-from pathlib import Path
-from typing import Optional, List, Set, Union
-
 LOCKDIR = "/var/tmp/gpu_lock"
+
+logger = logging.getLogger("gpu_locking")
+
 
 class _GPULock:
     """
@@ -17,6 +20,7 @@ class _GPULock:
     """
     def __init__(self, uid: int = None):
         self.user: str = getpass.getuser()
+        self.git_version = self.get_git_version()
         self.uid: int = uid
         self.pid: int = os.getpid()
             
@@ -26,7 +30,7 @@ class _GPULock:
         self.lock: Path = self.lock_dir / f"gpu_{self.uid}.json"
 
     def __enter__(self):
-        self._aquire_lock()
+        self._acquire_lock()
         self._add_uid_visible_devices()
         return self
 
@@ -40,7 +44,7 @@ class _GPULock:
             visible_devices: Set[str] = self._parse_visible_devices()
             visible_devices.add(str(self.uid))
         except KeyError:
-            visible_devices = set([str(self.uid)])
+            visible_devices = {str(self.uid)}
         
         self._set_visible_devices(visible_devices)
 
@@ -50,16 +54,16 @@ class _GPULock:
         self._set_visible_devices(visible_devices)
 
     def _release_lock(self) -> None:
-        if os.path.exists(self.lock):
-            os.remove(self.lock)
-            logging.debug(f"Released GPU {self.uid} lock")
+        if os.path.exists(str(self.lock)):
+            os.remove(str(self.lock))
+            logger.debug(f"Released GPU {self.uid} lock")
         else:
-            logging.debug(f"GPU {self.uid} lockfile was not created, so it will not be removed.") 
+            logger.debug(f"GPU {self.uid} lockfile was not created, so it will not be removed.")
 
-    def _aquire_lock(self) -> None: 
+    def _acquire_lock(self) -> None:
         self.check_lock_availability()
         if self.lock.exists():
-            os.remove(self.lock)
+            os.remove(str(self.lock))
         self._create_lock()
 
     def _verify_gpu_not_busy(self):
@@ -72,18 +76,27 @@ class _GPULock:
         RuntimeError
             If the GPU with uid self.uid is being used by a rogue user.
         """
-        gpus: GPUtil.GPU = {gpu.id: gpu for gpu in GPUtil.getGPUs()}
-        load: float  = gpus[self.uid].load
+        gpus: Dict[int, GPUtil.GPU] = {gpu.id: gpu for gpu in GPUtil.getGPUs()}
+        load: float = gpus[self.uid].load
         memutil: float = gpus[self.uid].memoryUtil
-        logging.debug(f"GPU {self.uid} has load {load} and memutil {memutil}.")
+        logger.debug(f"GPU {self.uid} has load {load} and memutil {memutil}.")
         if load > 0.1 and memutil > 0.1:
             raise RuntimeError("Lock could have been aquired but the GPU is being used by a rogue user.")
 
+    @staticmethod
+    def get_git_version() -> str:
+        try:
+            return str(subprocess.check_output(["git", "describe"], stderr=subprocess.STDOUT).strip())
+        except subprocess.CalledProcessError:
+            logger.warning("Could not parse git version.")
+            return "error"
+
     def _create_lock(self) -> None:
-        with open(self.lock, mode="w", newline="") as lockfp:
-            json.dump({"user": self.user, "time": int(time.time()), "uid": self.uid, "owner": self.pid}, fp=lockfp, indent=4)
-        os.chmod(self.lock, 0o777)
-        logging.debug(f"Aquired lock on GPU {self.uid}")
+        with open(str(self.lock), mode="w", newline="") as lockfp:
+            json.dump({"user": self.user, "time": int(time.time()), "uid": self.uid, "owner": self.pid,
+                       "git_version": self.git_version}, fp=lockfp, indent=4)
+        os.chmod(str(self.lock), 0o777)
+        logger.debug(f"Aquired lock on GPU {self.uid}")
 
     def check_lock_availability(self) -> None:
         """
@@ -96,13 +109,15 @@ class _GPULock:
         
         """
         if self.lock.exists():
-            with open(self.lock, mode="r") as lockfp:
+            with open(str(self.lock), mode="r") as lockfp:
                 lock = json.load(lockfp)
             
             if lock["owner"] == self.pid:
-                logging.warning(f"Found existing GPU lock for user {self.user}. Please make sure to release resources after finishing your scripts. Old lock will be renewed.")
+                logger.warning(f"Found existing GPU lock for pid {self.pid}. "
+                               f"Please make sure to release resources after "
+                               f"finishing your scripts. Old lock will be renewed.")
             elif not self.check_pid_alive(pid=lock["owner"]):
-                logging.debug(f"Found stale GPU lock with dead owner.")
+                logger.debug(f"Found stale GPU lock with dead owner.")
             else:
                 raise RuntimeError(f"Could not aquire lock. The resource is locked by {lock['user']}")
         
@@ -167,10 +182,9 @@ class _MultiGPULock:
         if len(self.locks) < n:
             raise RuntimeError(f"Could not acquire at {n} locks. Too many GPUs are busy!")
     
-    def __enter__(self):
+    def __enter__(self) -> Any:
         for lock in self.locks:
             lock.__enter__()
-        
         return self
     
     def __exit__(self, exit_type, value, traceback):
@@ -178,7 +192,7 @@ class _MultiGPULock:
             lock.__exit__(exit_type, value, traceback)
 
 
-def lock_gpu(n: int = 1, n_system_gpus: int= 8) -> Union[_MultiGPULock, _GPULock]:
+def lock_gpu(n: int = 1, n_system_gpus: int = 8) -> Union[_MultiGPULock, _GPULock]:
     """
     Get a lock on one or multiple GPUs.
     
