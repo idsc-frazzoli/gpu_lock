@@ -9,6 +9,8 @@ from typing import Dict, List, Set, Union, Any
 
 import GPUtil
 
+from .version import version
+
 LOCKDIR = "/var/tmp/gpu_lock"
 
 logger = logging.getLogger("gpu_locking")
@@ -82,18 +84,10 @@ class _GPULock:
         if load > 0.1 and memutil > 0.1:
             raise RuntimeError("Lock could have been aquired but the GPU is being used by a rogue user.")
 
-    @staticmethod
-    def get_git_version() -> str:
-        try:
-            return str(subprocess.check_output(["git", "describe"], stderr=subprocess.STDOUT).strip())
-        except subprocess.CalledProcessError:
-            logger.warning("Could not parse git version.")
-            return "error"
-
     def _create_lock(self) -> None:
         with open(str(self.lock), mode="w", newline="") as lockfp:
             json.dump({"user": self.user, "time": int(time.time()), "uid": self.uid, "owner": self.pid,
-                       "git_version": self.get_git_version()}, fp=lockfp, indent=4)
+                       "version": version}, fp=lockfp, indent=4)
         os.chmod(str(self.lock), 0o777)
         logger.debug(f"Aquired lock on GPU {self.uid}")
 
