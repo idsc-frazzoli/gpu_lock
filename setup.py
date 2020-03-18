@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="gpu_lock",
-    version="0.1",
+    version="0.2",
     author="Lorenz Hetzel",
     author_email="hetzell@student.ethz.ch",
     description="File based locking of GPU resources.",
